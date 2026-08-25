@@ -1424,13 +1424,12 @@ const STYLES = `
   .slider-value { font-family: 'Geist Mono', ui-monospace, monospace; font-weight: 600; display: flex; align-items: center; }
   .slider-unit { color: var(--text-dim); font-weight: 400; margin-left: 2px; }
   .value-input {
-    width: 4.4em; background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px;
-    font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; font-weight: 600; text-align: right;
-    outline: none; padding: 3px 7px; -moz-appearance: textfield;
+    width: 5.6em; background: var(--surface-2); border: 1.5px solid var(--border); border-radius: 6px;
+    font-family: 'Geist Mono', ui-monospace, monospace; font-size: 16px; font-weight: 600; text-align: right;
+    outline: none; padding: 5px 9px; -moz-appearance: textfield;
   }
   .value-input::-webkit-outer-spin-button, .value-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  .value-input:focus { border-color: var(--primary); }
-  .value-input:focus { border-color: var(--primary); }
+  .value-input:focus { border-color: var(--primary); border-width: 2px; box-shadow: 0 0 0 3px rgba(61,139,255,0.14); }
   .slider-sub { font-size: 10.5px; color: var(--text-dim); margin-top: 5px; }
   .slider-input { -webkit-appearance: none; width: 100%; height: 5px; border-radius: 3px; outline: none; }
   .slider-input::-webkit-slider-thumb {
@@ -1439,6 +1438,15 @@ const STYLES = `
     box-shadow: 0 1px 4px rgba(23,32,46,0.28);
   }
   .slider-input::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: #E7EEF8; border: 3px solid var(--primary); cursor: pointer; }
+
+  /* The typed value box is the primary way to set these fields now; the slider
+     beneath it is kept as a secondary, optional control — visually quieter
+     (thinner track, smaller thumb, muted opacity) so it doesn't compete with
+     the input for attention, without removing it. */
+  .slider-input-secondary { height: 3px; opacity: 0.68; margin-top: 2px; }
+  .slider-input-secondary::-webkit-slider-thumb { width: 13px; height: 13px; margin-top: -5px; box-shadow: none; }
+  .slider-input-secondary::-moz-range-thumb { width: 11px; height: 11px; }
+  .slider-input-secondary:hover, .slider-input-secondary:focus { opacity: 1; }
 
   .step-ticks { display: flex; justify-content: space-between; margin-top: 5px; }
   .tick { font-size: 10px; color: var(--text-dim); cursor: pointer; font-family: 'Geist Mono', ui-monospace, monospace; }
@@ -1960,22 +1968,46 @@ function NumericSlider({ label, unit, value, min, max, step, onChange, accent, s
   const isEmpty = value === "" || value === null || value === undefined;
   const numeric = isEmpty ? min : value;
   const pct = isEmpty ? 0 : ((numeric - min) / (max - min)) * 100;
+
+  // Typed entry is the primary way to set a value here, so it must never fight
+  // the user mid-keystroke. A local text buffer holds exactly what's typed —
+  // including a partial number that's temporarily below `min` (e.g. typing "9"
+  // on the way to "95" when min=90) — and clamping only happens once, on commit
+  // (blur or Enter). Committing on every keystroke was the bug: it silently
+  // rewrote the field while the user was still typing.
+  const [text, setText] = useState(isEmpty ? "" : String(value));
+  const [editing, setEditing] = useState(false);
+  if (!editing && text !== (isEmpty ? "" : String(value))) setText(isEmpty ? "" : String(value));
+
+  const commit = () => {
+    setEditing(false);
+    if (text.trim() === "") { onChange(""); return; }
+    const n = parseFloat(text);
+    if (isNaN(n)) { setText(isEmpty ? "" : String(value)); return; }
+    const clamped = Math.min(max, Math.max(min, n));
+    setText(String(clamped));
+    onChange(clamped);
+  };
+
   return (
     <div className={"slider-row " + (isEmpty ? "field-empty" : "")}>
       <div className="slider-top">
         <span className="slider-label">{icon}{label}</span>
         <span className="slider-value">
           <input
-            type="number" className="value-input" value={isEmpty ? "" : value}
-            min={min} max={max} step={step} placeholder="—"
+            type="text" inputMode="decimal" className="value-input" value={text}
+            placeholder="—"
             style={{ color: isEmpty ? "var(--text-dim)" : accent }}
+            onFocus={() => setEditing(true)}
             onChange={(e) => {
-              const raw = e.target.value;
-              if (raw === "") { onChange(""); return; }
-              const n = parseFloat(raw);
-              if (isNaN(n)) { onChange(""); return; }
-              onChange(Math.min(max, Math.max(min, n)));
+              const v = e.target.value;
+              // Allow free typing of any in-progress number: digits, at most one
+              // decimal point, optional leading minus is not needed here (all
+              // ranges are non-negative) — never clamp or reject while typing.
+              if (v === "" || /^\d*\.?\d*$/.test(v)) setText(v);
             }}
+            onBlur={commit}
+            onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
           />
           {unit ? <span className="slider-unit"> {unit}</span> : null}
         </span>
@@ -1983,9 +2015,9 @@ function NumericSlider({ label, unit, value, min, max, step, onChange, accent, s
       <input
         type="range" min={min} max={max} step={step} value={numeric}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="slider-input"
-        aria-label={label}
-        style={{ background: "linear-gradient(90deg, " + accent + " " + pct + "%, #24303F " + pct + "%)" }}
+        className="slider-input slider-input-secondary"
+        aria-label={label + " (drag as an alternative to typing)"}
+        style={{ background: "linear-gradient(90deg, " + accent + " " + pct + "%, var(--border) " + pct + "%)" }}
       />
       {sub ? <div className="slider-sub">{sub}</div> : null}
     </div>
@@ -2006,7 +2038,7 @@ function StepSlider({ label, options, labels, value, onChange, accent }) {
         onChange={(e) => onChange(options[parseInt(e.target.value, 10)])}
         className="slider-input"
         aria-label={label}
-        style={{ background: "linear-gradient(90deg, " + accent + " " + pct + "%, #24303F " + pct + "%)" }}
+        style={{ background: "linear-gradient(90deg, " + accent + " " + pct + "%, var(--border) " + pct + "%)" }}
       />
       <div className="step-ticks">
         {options.map((o) => (
@@ -2327,7 +2359,7 @@ function StageExplorer() {
           onChange={(e) => setDemoEgfr(parseInt(e.target.value, 10))}
           className="slider-input explorer-range"
           aria-label="Demonstration eGFR value"
-          style={{ background: "linear-gradient(90deg, " + st.color + " " + ((demoEgfr - 5) / 115) * 100 + "%, #24303F " + ((demoEgfr - 5) / 115) * 100 + "%)" }}
+          style={{ background: "linear-gradient(90deg, " + st.color + " " + ((demoEgfr - 5) / 115) * 100 + "%, var(--border) " + ((demoEgfr - 5) / 115) * 100 + "%)" }}
         />
         <div className="explorer-ladder">
           {STAGES.map((row, i) => (
@@ -4618,8 +4650,8 @@ export default function NephroPath() {
                   <div style={{ width: "100%", height: 120 }}>
                     <ResponsiveContainer>
                       <LineChart data={fluctuation} margin={{ top: 4, right: 8, left: -24, bottom: 0 }}>
-                        <CartesianGrid stroke="#24303F" strokeDasharray="2 4" vertical={false} />
-                        <XAxis dataKey="week" stroke="#8B9BB0" fontSize={10} tickFormatter={(v) => "wk" + v} tickLine={false} axisLine={{ stroke: "#24303F" }} />
+                        <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
+                        <XAxis dataKey="week" stroke="#8B9BB0" fontSize={10} tickFormatter={(v) => "wk" + v} tickLine={false} axisLine={{ stroke: "var(--border)" }} />
                         <YAxis stroke="#8B9BB0" fontSize={10} tickLine={false} axisLine={false} domain={["dataMin - 5", "dataMax + 5"]} />
                         <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 6, fontSize: 11 }} formatter={(v) => [v + " mL/min", "eGFR"]} labelFormatter={(v) => "Week " + v} />
                         <Line type="monotone" dataKey="egfr" stroke={stage.color} strokeWidth={2} dot={false} />
@@ -4700,8 +4732,8 @@ export default function NephroPath() {
                   <div style={{ width: "100%", height: 240 }}>
                     <ResponsiveContainer>
                       <AreaChart data={projection} margin={{ top: 6, right: 10, left: -18, bottom: 0 }}>
-                        <CartesianGrid stroke="#24303F" strokeDasharray="2 4" vertical={false} />
-                        <XAxis dataKey="months" stroke="#8B9BB0" fontSize={11} tickFormatter={(v) => v + "mo"} tickLine={false} axisLine={{ stroke: "#24303F" }} />
+                        <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
+                        <XAxis dataKey="months" stroke="#8B9BB0" fontSize={11} tickFormatter={(v) => v + "mo"} tickLine={false} axisLine={{ stroke: "var(--border)" }} />
                         <YAxis stroke="#8B9BB0" fontSize={11} tickFormatter={(v) => v + "%"} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 6, fontSize: 12 }} labelFormatter={(v) => v + " months"} formatter={(v, name) => [v.toFixed(1) + "%", name]} />
                         <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -4891,8 +4923,8 @@ export default function NephroPath() {
                           }))}
                           margin={{ top: 8, right: 14, left: -18, bottom: 0 }}
                         >
-                          <CartesianGrid stroke="#24303F" strokeDasharray="2 4" vertical={false} />
-                          <XAxis dataKey="label" stroke="#8B9BB0" fontSize={10} tickLine={false} axisLine={{ stroke: "#24303F" }} />
+                          <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
+                          <XAxis dataKey="label" stroke="#8B9BB0" fontSize={10} tickLine={false} axisLine={{ stroke: "var(--border)" }} />
                           <YAxis stroke="#8B9BB0" fontSize={10} tickFormatter={(v) => v + "%"} tickLine={false} axisLine={false} domain={[0, 100]} />
                           <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 6, fontSize: 11 }} formatter={(v) => [v + "%", "Risk"]} />
                           <Line type="monotone" dataKey="risk" stroke="#3D8BFF" strokeWidth={2.5} dot={{ r: 4, fill: "#3D8BFF" }} />
@@ -4917,8 +4949,8 @@ export default function NephroPath() {
                           }))}
                           margin={{ top: 8, right: 14, left: -6, bottom: 0 }}
                         >
-                          <CartesianGrid stroke="#24303F" strokeDasharray="2 4" vertical={false} />
-                          <XAxis dataKey="label" stroke="#8B9BB0" fontSize={10} tickLine={false} axisLine={{ stroke: "#24303F" }} />
+                          <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
+                          <XAxis dataKey="label" stroke="#8B9BB0" fontSize={10} tickLine={false} axisLine={{ stroke: "var(--border)" }} />
                           <YAxis stroke="#8B9BB0" fontSize={10} tickLine={false} axisLine={false} />
                           <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 6, fontSize: 11 }} formatter={(v) => [v + " mL/min", "eGFR"]} />
                           <Line type="monotone" dataKey="egfr" stroke="#2FD08A" strokeWidth={2.5} dot={{ r: 4, fill: "#2FD08A" }} />
