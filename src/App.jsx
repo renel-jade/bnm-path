@@ -750,6 +750,13 @@ const STYLES = `
   }
   .severity-message { font-size: 12.5px; color: var(--text); line-height: 1.55; opacity: 0.85; }
 
+  .expert-note {
+    display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--amber);
+    background: rgba(245,201,62,0.10); border: 1px solid rgba(245,201,62,0.30); border-radius: 8px;
+    padding: 9px 12px; margin: 10px 0 16px; line-height: 1.5;
+  }
+  .expert-note svg { flex-shrink: 0; }
+
   .gauge-caption {
     font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; text-transform: uppercase;
     letter-spacing: 0.09em; color: var(--text-dim); margin-bottom: 2px;
@@ -1861,6 +1868,15 @@ const STYLES = `
   .save-saved { color: var(--good); background: rgba(47,208,138,0.12); border: 1px solid rgba(47,208,138,0.34); }
   .save-error { color: var(--danger); background: rgba(240,69,94,0.12); border: 1px solid rgba(240,69,94,0.34); }
   .save-skipped { color: var(--amber); background: rgba(245,201,62,0.12); border: 1px solid rgba(245,201,62,0.32); }
+  .personal-mode-note {
+    width: 100%; text-align: center; font-size: 11.5px; color: var(--text-dim);
+    padding: 8px 12px; margin-bottom: 4px;
+  }
+  .inline-retry {
+    background: none; border: 1px solid var(--danger); color: var(--danger); border-radius: 6px;
+    font-size: 10.5px; font-weight: 600; padding: 2px 9px; margin-left: 4px; cursor: pointer;
+  }
+  .inline-retry:hover { background: rgba(240,69,94,0.10); }
 
   /* ---------- history ---------- */
   .history-empty { text-align: center; padding: 40px 24px; }
@@ -2840,9 +2856,40 @@ function num(v, fallback) {
   return isNaN(n) ? fallback : n;
 }
 
+/* Storage abstraction: window.storage is a Claude-artifact-only API that does
+   NOT exist when this file is run standalone (VS Code, a local dev server, a
+   real deployment) -- every direct window.storage.get/set call would throw
+   there and nothing would ever save. These two wrappers use window.storage
+   when it's actually present, and transparently fall back to the browser's
+   own localStorage otherwise, so the same code persists data correctly in
+   both contexts without any other function needing to change. */
+async function storageGet(key) {
+  const hasArtifactStorage = typeof window !== "undefined" && window.storage && typeof window.storage.get === "function";
+  if (hasArtifactStorage) {
+    try { return await window.storage.get(key, false); }
+    catch (e) { return null; }
+  }
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw === null ? null : { key, value: raw };
+  } catch (e) { return null; }
+}
+
+async function storageSet(key, value) {
+  const hasArtifactStorage = typeof window !== "undefined" && window.storage && typeof window.storage.set === "function";
+  if (hasArtifactStorage) {
+    try { return await window.storage.set(key, value, false); }
+    catch (e) { return null; }
+  }
+  try {
+    window.localStorage.setItem(key, value);
+    return { key, value };
+  } catch (e) { return null; }
+}
+
 async function readJSON(key, fallback) {
   try {
-    const res = await window.storage.get(key, false);
+    const res = await storageGet(key);
     if (res && res.value) return JSON.parse(res.value);
   } catch (e) { /* key absent */ }
   return fallback;
@@ -2855,7 +2902,7 @@ async function readJSON(key, fallback) {
    exactly what makes saved data look like it vanished. */
 async function readJSONWithStatus(key, fallback) {
   try {
-    const res = await window.storage.get(key, false);
+    const res = await storageGet(key);
     if (res && res.value) return { ok: true, value: JSON.parse(res.value) };
     return { ok: true, value: fallback };
   } catch (e) {
@@ -2874,7 +2921,7 @@ async function upsertPatientIndex(entry) {
     const i = idx.findIndex((p) => p.id === entry.id);
     if (i >= 0) idx[i] = { ...idx[i], ...entry };
     else idx.push(entry);
-    await window.storage.set(PATIENT_INDEX_KEY, JSON.stringify(idx), false);
+    await storageSet(PATIENT_INDEX_KEY, JSON.stringify(idx));
     return true;
   } catch (e) { return false; }
 }
@@ -2889,7 +2936,7 @@ async function saveAssessmentRecord(record) {
     const key = "records:" + record.patientId;
     const list = await loadAssessmentHistory(record.patientId);
     list.push(record);
-    const result = await window.storage.set(key, JSON.stringify(list), false);
+    const result = await storageSet(key, JSON.stringify(list));
     await upsertPatientIndex({
       id: record.patientId, name: record.patientName || "",
       lastVisit: record.timestamp, lastRisk: record.riskPct, lastStage: record.stage,
@@ -2903,7 +2950,7 @@ async function deleteAssessmentRecord(patientId, timestamp) {
   try {
     const list = await loadAssessmentHistory(patientId);
     const next = list.filter((r) => r.timestamp !== timestamp);
-    await window.storage.set("records:" + patientId, JSON.stringify(next), false);
+    await storageSet("records:" + patientId, JSON.stringify(next));
     const latest = next.length ? next.reduce((a, b) => (a.timestamp > b.timestamp ? a : b)) : null;
     await upsertPatientIndex({
       id: patientId,
@@ -2937,7 +2984,7 @@ async function importAllRecords(parsed) {
       if (!byTs.has(r.timestamp)) { byTs.set(r.timestamp, r); merged++; }
     }
     const list = Array.from(byTs.values()).sort((a, b) => a.timestamp - b.timestamp);
-    await window.storage.set("records:" + p.id, JSON.stringify(list), false);
+    await storageSet("records:" + p.id, JSON.stringify(list));
     const latest = list.length ? list[list.length - 1] : null;
     await upsertPatientIndex({
       id: p.id, name: p.name || "",
@@ -2964,7 +3011,7 @@ function downloadJSON(data, filename) {
 
 /* Session persistence — survives a refresh mid-assessment. */
 async function saveSession(state) {
-  try { await window.storage.set(SESSION_KEY, JSON.stringify(state), false); } catch (e) { /* non-fatal */ }
+  try { await storageSet(SESSION_KEY, JSON.stringify(state)); } catch (e) { /* non-fatal */ }
 }
 async function loadSession() { return await readJSON(SESSION_KEY, null); }
 
@@ -3659,14 +3706,22 @@ export default function NephroPath() {
     const pid = (applied.patientId || "").trim();
     if (!pid) { setSaveStatus("skipped"); return; }
     setSaveStatus("saving");
-    const record = {
-      patientId: pid, patientName: (applied.patientName || "").trim(), timestamp: Date.now(),
-      stage: stage.code, riskPct: Math.round(currentTailPct * 10) / 10, months: steps * 6,
-      egfr: applied.egfr, age: applied.age, sex: applied.sex, diabetes: applied.diabetes,
-      upcr: applied.upcr, sbp: applied.sbp, bmi: applied.bmi,
-    };
-    const ok = await saveAssessmentRecord(record);
-    setSaveStatus(ok ? "saved" : "error");
+    // Guard the whole attempt: if anything here throws (a field briefly
+    // undefined mid-render, a malformed value, etc.) the promise must not
+    // reject silently — that leaves the button stuck on "Saving..." forever
+    // with no way for the user to know it failed or try again.
+    try {
+      const record = {
+        patientId: pid, patientName: (applied.patientName || "").trim(), timestamp: Date.now(),
+        stage: stage.code, riskPct: Math.round(currentTailPct * 10) / 10, months: steps * 6,
+        egfr: applied.egfr, age: applied.age, sex: applied.sex, diabetes: applied.diabetes,
+        upcr: applied.upcr, sbp: applied.sbp, bmi: applied.bmi,
+      };
+      const ok = await saveAssessmentRecord(record);
+      setSaveStatus(ok ? "saved" : "error");
+    } catch (e) {
+      setSaveStatus("error");
+    }
   };
 
   const viewHistoryFor = async (rawId, fromView) => {
@@ -4514,6 +4569,11 @@ export default function NephroPath() {
                 <div className="severity-message">{severity.message}</div>
               </div>
 
+              <div className="expert-note">
+                <AlertTriangle size={13} />
+                This result does not replace medical advice — consulting a physician or nephrologist is still a must.
+              </div>
+
               {priorRecord ? <VisitComparison prior={priorRecord} applied={applied} stage={stage} currentTailPct={currentTailPct} steps={steps} /> : null}
 
               <div className="mpns-card">
@@ -4583,7 +4643,12 @@ export default function NephroPath() {
 
               {isClinician && saveStatus === "saving" && <div className="save-status save-saving">Saving to history…</div>}
               {isClinician && saveStatus === "saved" && <div className="save-status save-saved"><CheckCircle2 size={13} /> Saved to history for patient {applied.patientId}</div>}
-              {isClinician && saveStatus === "error" && <div className="save-status save-error"><AlertTriangle size={13} /> Could not save this result. Try again later.</div>}
+              {isClinician && saveStatus === "error" && (
+                <div className="save-status save-error">
+                  <AlertTriangle size={13} /> Could not save this result.
+                  <button className="inline-retry" onClick={saveCurrentResult}>Retry</button>
+                </div>
+              )}
               {isClinician && saveStatus === "skipped" && <div className="save-status save-skipped">Enter a Patient ID on the patient screen to save this result.</div>}
               {isClinician && saveStatus === null && applied.patientId.trim() ? <div className="save-status save-hint no-print">Not saved yet — press Save result to add it to this patient's history.</div> : null}
               {isStale && (
@@ -4607,7 +4672,12 @@ export default function NephroPath() {
                   <button className="primary-btn" onClick={() => setView("indepth")}>See in-depth analysis <ArrowRight size={14} /></button>
                 </>
               ) : (
-                <button className="primary-btn" onClick={() => setView("interventions")}>See what helps <ArrowRight size={14} /></button>
+                <>
+                  <div className="personal-mode-note no-print">
+                    Personal mode doesn't save records to this device — switch to Clinician mode to save and revisit a patient's history.
+                  </div>
+                  <button className="primary-btn" onClick={() => setView("interventions")}>See what helps <ArrowRight size={14} /></button>
+                </>
               )}
             </div>
           </div>
