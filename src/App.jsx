@@ -354,15 +354,15 @@ const STYLES = `
      default carry an 8px body margin and auto height. That margin exposes a white
      strip around the app and stops it filling the viewport. These rules neutralise
      it and force the mount chain to full height, so the app genuinely runs edge to
-     edge. Scoped to the common mount-point ids so it can't disturb unrelated pages. */
+     edge. Deliberately mount-agnostic: it works whatever id the host app renders into. */
   html, body {
     margin: 0; padding: 0; height: 100%; background: #080D16;
     overscroll-behavior: none;
   }
-  body > #root, body > #app, body > main {
-    height: 100%; min-height: 100%; display: flex; flex-direction: column;
-  }
-  body > #root > *, body > #app > *, body > main > * { flex: 1; min-height: 0; }
+  body { display: flex; flex-direction: column; }
+  /* whatever element the host app mounts into, it fills the page */
+  body > * { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  body > * > * { flex: 1 1 auto; min-height: 0; }
 
   .np-root {
     /* Dark clinical: the register of a radiology workstation, not a marketing page.
@@ -383,7 +383,7 @@ const STYLES = `
     border-radius: 8px;
   }
   /* squared corners once mounted as a real full-page app */
-  body > #root .np-root, body > #app .np-root, body > main .np-root { border-radius: 0; }
+  body .np-root { border-radius: 0; }
   /* the app shell must also reach full height for the sidebar to run edge to edge */
   .np-app { display: flex; flex-direction: column; }
   .np-app > .app-layout { flex: 1; min-height: 0; }
@@ -646,7 +646,7 @@ const STYLES = `
        pushed the layout sideways and left buttons half off-screen. */
     .content-area img, .content-area svg, .content-area canvas { max-width: 100%; height: auto; }
     .content-area table { display: block; overflow-x: auto; max-width: 100%; }
-    .screen, .screen-shell, .panel, .result-card { min-width: 0; overflow-wrap: anywhere; }
+    .screen, .screen-shell, .panel, .result-card { min-width: 0; overflow-wrap: break-word; }
     .panel, .result-card { padding: 16px 14px; }
     .section-title { font-size: 20px; margin-bottom: 14px; }
     .screen-actions { flex-direction: column; gap: 10px; }
