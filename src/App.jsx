@@ -31,7 +31,7 @@ const STAGES = [
 const N = STAGES.length;
 
 /* Standard KDIGO-aligned monitoring cadence by CKD stage — general clinical practice,
-   not derived from the finalized CPT workbook. Presented as guidance, separately from
+   not derived from the finalized CPD workbook. Presented as guidance, separately from
    the validated prediction path. */
 const FOLLOWUP_MONTHS = { G1: 12, G2: 12, G3a: 6, G3b: 3, G4: 3, G5: 1 };
 function recommendedFollowupMonths(stageCode) {
@@ -52,7 +52,7 @@ const YESNO = ["No", "Yes"];
 /* KDIGO staging is confirmed, not instantaneous: a single improved eGFR reading does
    not reclassify a patient to a milder stage. This finds the most advanced stage ever
    recorded for a patient across their saved history, used to anchor the floor below
-   which the displayed CKD stage cannot fall. This does not touch the CPT/transition
+   which the displayed CKD stage cannot fall. This does not touch the CPD/transition
    matrix -- the Markov engine still uses the workbook real backward probabilities. */
 function worstRecordedStageIdx(records) {
   let worst = -1;
@@ -92,7 +92,7 @@ function bmiCategory(bmi) {
 }
 
 /* ===============================================================
-   BNM-PATH CPT ENGINE — v1_3 (NEPHROPATH_CPT_RECONSTRUCTED_v1_3)
+   BNM-PATH CPD ENGINE — v1_3 (NEPHROPATH_CPD_RECONSTRUCTED_v1_3)
    The audited refined-model workbook (NEPHROPATH_FINAL_AUDITED_2.xlsx) is
    the authoritative source. Implemented exactly: no reinterpretation, no
    new coefficients, no probability cap beyond the two documented
@@ -643,6 +643,12 @@ const STYLES = `
      content breathes rather than compressing. Desktop and tablet are unaffected. */
   @media (max-width: 560px) {
     .content-area { padding: 16px 12px 28px; }
+    /* Safety net: nothing inside the content column may exceed its width on a
+       phone. Fixed-size figures, wide tables and long unbroken strings were what
+       pushed the layout sideways and left buttons half off-screen. */
+    .content-area img, .content-area svg, .content-area canvas { max-width: 100%; height: auto; }
+    .content-area table { display: block; overflow-x: auto; max-width: 100%; }
+    .screen, .screen-shell, .panel, .result-card { min-width: 0; overflow-wrap: anywhere; }
     .panel, .result-card { padding: 16px 14px; }
     .section-title { font-size: 20px; margin-bottom: 14px; }
     .screen-actions { flex-direction: column; gap: 10px; }
@@ -681,7 +687,7 @@ const STYLES = `
 
   /* ---------- ANIMATED KIDNEY ---------- */
   .kidney-status { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 6px; }
-  .kidney-svg { overflow: visible; }
+  .kidney-svg { overflow: visible; max-width: 100%; height: auto; }
   .kidney-body {
     transform-origin: 110px 110px;
     animation-name: kidneyPulse; animation-iteration-count: infinite; animation-timing-function: ease-in-out;
@@ -704,7 +710,7 @@ const STYLES = `
   .kidney-caption-stage { font-family: 'Geist', system-ui, sans-serif; font-size: 22px; font-weight: 700; }
   .kidney-caption-text { font-size: 12px; color: var(--text-dim); }
 
-  .risk-gauge { overflow: visible; }
+  .risk-gauge { overflow: visible; max-width: 100%; height: auto; }
   .gauge-arc { animation-name: gaugeSweep; animation-timing-function: var(--ease); animation-fill-mode: forwards; }
   @keyframes gaugeSweep { to { stroke-dashoffset: 0; } }
   /* ---------- SINCE YOUR LAST VISIT ---------- */
@@ -1537,7 +1543,15 @@ const STYLES = `
 
   .slider-row { margin-bottom: 16px; }
   .slider-row:last-child { margin-bottom: 0; }
-  .slider-top { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; margin-bottom: 6px; }
+  /* NumericSlider puts its number box inside .slider-top, but PlainNumberField
+     puts the label alone there and the input on the row below. That made the
+     first row ~32px tall in one panel and ~16px in the other, so every field
+     below sat at a different height and the two columns drifted out of line.
+     A min-height matching the number box keeps both label rows identical. */
+  .slider-top {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12.5px; margin-bottom: 6px; min-height: 32px;
+  }
   .slider-label { color: var(--text); font-weight: 500; }
   .slider-value { font-family: 'Geist Mono', ui-monospace, monospace; font-weight: 600; display: flex; align-items: center; }
   .slider-unit { color: var(--text-dim); font-weight: 400; margin-left: 2px; }
@@ -2718,12 +2732,12 @@ function MathModelScreen() {
         <h1 className="screen-title">Mathematical model</h1>
         <p className="screen-sub">
           The BNM-Path formulation exactly as implemented in this application
-          (NEPHROPATH_CPT_RECONSTRUCTED_v1_3).
+          (NEPHROPATH_CPD_RECONSTRUCTED_v1_3).
         </p>
       </div>
 
       <div className="model-flow">
-        {["eGFR", "Sₜ", "T₀", "η", "Fη", "CPTraw", "T", "πₜ₊₁"].map((s, i, arr) => (
+        {["eGFR", "Sₜ", "T₀", "η", "Fη", "CPDraw", "T", "πₜ₊₁"].map((s, i, arr) => (
           <React.Fragment key={s}>
             <span className="model-flow-node">{s}</span>
             {i < arr.length - 1 ? <ArrowRight size={13} className="model-flow-arrow" /> : null}
@@ -3341,7 +3355,7 @@ function ProgressionScroll() {
 
 /* ---------------------------------------------------------------
    App Verification: proves the running engine reproduces the finalized
-   workbook (NEPHROPATH_CPT_RECONSTRUCTED_v1_3) rather than assuming the
+   workbook (NEPHROPATH_CPD_RECONSTRUCTED_v1_3) rather than assuming the
    ported equations are correct. Compares Excel-expected vs. app-computed
    for every cell of all six columns, across all three reference profiles.
 --------------------------------------------------------------- */
@@ -4289,7 +4303,7 @@ export default function NephroPath() {
                   <ul className="mode-list">
                     <li>Save and reload patients by ID</li>
                     <li>Track risk across follow-up visits</li>
-                    <li>See the CPT and transition matrix</li>
+                    <li>See the CPD and transition matrix</li>
                     <li>Print or export records</li>
                   </ul>
                   <span className="mode-go">Open clinician mode <ArrowRight size={13} /></span>
@@ -4809,7 +4823,7 @@ export default function NephroPath() {
                   <span className="next-checkup-interval">every {recommendedFollowupMonths(stage.code)} month{recommendedFollowupMonths(stage.code) === 1 ? "" : "s"} at {stage.code}</span>
                 </div>
                 <p className="next-checkup-note">
-                  General monitoring guidance, not part of the validated CPT — more advanced stages are checked
+                  General monitoring guidance, not part of the validated CPD — more advanced stages are checked
                   more often. Your clinician may recommend a different schedule based on your full history.
                 </p>
               </div>
@@ -4911,7 +4925,7 @@ export default function NephroPath() {
               <div>
                 <div className="panel">
                   <div className="panel-title"><TrendingUp size={14} className="ptitle-icon" /> Illustrative eGFR fluctuation</div>
-                  <div className="cpt-note">Week-to-week noise only — not used in the CPT or Markov chain.</div>
+                  <div className="cpt-note">Week-to-week noise only — not used in the CPD or Markov chain.</div>
                   <div style={{ width: "100%", height: 120 }}>
                     <ResponsiveContainer>
                       <LineChart data={fluctuation} margin={{ top: 4, right: 8, left: -24, bottom: 0 }}>
@@ -4957,7 +4971,7 @@ export default function NephroPath() {
 
               <div>
                 <div className="panel">
-                  <div className="panel-title"><BarChart3 size={14} className="ptitle-icon" /> CPT row for Sₜ = {stage.code}: reference patient vs this patient</div>
+                  <div className="panel-title"><BarChart3 size={14} className="ptitle-icon" /> CPD row for Sₜ = {stage.code}: reference patient vs this patient</div>
                   <div className="matrix-wrap">
                     <table className="tmatrix">
                       <thead><tr><th></th>{STAGES.map((s) => <th key={s.code}>{s.code}</th>)}</tr></thead>
@@ -5166,9 +5180,9 @@ export default function NephroPath() {
             </div>
 
             <div className="footnote">
-              Not a validated clinical tool — for demonstration and thesis purposes only. CPT values embedded from the
-              BNM-Path CPT Workbook. Hypertension is derived from SBP (≥130 mmHg); BMI is shown for guidance only and
-              is not part of the published CPT coefficients.
+              Not a validated clinical tool — for demonstration and thesis purposes only. CPD values embedded from the
+              BNM-Path CPD Workbook. Hypertension is derived from SBP (≥130 mmHg); BMI is shown for guidance only and
+              is not part of the published CPD coefficients.
             </div>
           </div>
         )}
