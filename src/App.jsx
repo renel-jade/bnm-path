@@ -348,6 +348,22 @@ function generateAdvice(p, stageIdx, bmi) {
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700&display=swap');
 
+  /* ---------- HOST PAGE RESET ----------
+     When this component is deployed as a standalone web app (rather than shown in
+     an embedded preview), the hosting page supplies its own <html>/<body>, which by
+     default carry an 8px body margin and auto height. That margin exposes a white
+     strip around the app and stops it filling the viewport. These rules neutralise
+     it and force the mount chain to full height, so the app genuinely runs edge to
+     edge. Scoped to the common mount-point ids so it can't disturb unrelated pages. */
+  html, body {
+    margin: 0; padding: 0; height: 100%; background: #080D16;
+    overscroll-behavior: none;
+  }
+  body > #root, body > #app, body > main {
+    height: 100%; min-height: 100%; display: flex; flex-direction: column;
+  }
+  body > #root > *, body > #app > *, body > main > * { flex: 1; min-height: 0; }
+
   .np-root {
     /* Dark clinical: the register of a radiology workstation, not a marketing page.
        One neutral family (deep slate-navy), one accent (clinical blue).
@@ -360,8 +376,14 @@ const STYLES = `
     font-family: 'Geist', system-ui, sans-serif;
     /* fill the viewport so no page background is ever exposed below the content */
     min-height: 100vh; min-height: 100dvh;
+    width: 100%;
+    /* The 8px radius suits an embedded preview card, but at true full-screen it
+       rounds the viewport corners and lets the page background show through.
+       Corners are squared once the app is actually filling the window. */
     border-radius: 8px;
   }
+  /* squared corners once mounted as a real full-page app */
+  body > #root .np-root, body > #app .np-root, body > main .np-root { border-radius: 0; }
   /* the app shell must also reach full height for the sidebar to run edge to edge */
   .np-app { display: flex; flex-direction: column; }
   .np-app > .app-layout { flex: 1; min-height: 0; }
@@ -409,7 +431,7 @@ const STYLES = `
   .home-inner {
     position: relative; z-index: 2; flex: 1;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    width: 100%; max-width: 720px;
+    width: 100%; max-width: 1100px;
   }
   .cover-mark { margin-bottom: 28px; width: 100%; display: flex; justify-content: center; }
   /* the logo scales with the viewport but never outgrows the column */
@@ -420,20 +442,20 @@ const STYLES = `
     display: flex; align-items: center; justify-content: center; gap: 14px;
     font-family: 'Geist', system-ui, sans-serif;
     font-size: clamp(15px, 2vw, 19px); font-weight: 600; font-style: italic;
-    color: var(--primary-dark); max-width: 520px; text-align: center;
+    color: var(--primary-dark); max-width: 780px; text-align: center;
     margin-bottom: 16px;
   }
   .home-tagline-rule { display: none; }
 
   .home-study-title {
-    max-width: 620px; font-family: 'Geist Mono', ui-monospace, monospace;
+    max-width: 900px; font-family: 'Geist Mono', ui-monospace, monospace;
     font-size: clamp(10.5px, 1.5vw, 12px); letter-spacing: 0.02em; line-height: 1.65;
     color: var(--text-dim); margin: 0 0 26px; padding: 0 8px;
   }
   .home-study-title b { color: var(--text); letter-spacing: 0.06em; }
 
   .home-desc {
-    max-width: 560px; font-size: clamp(15px, 1.7vw, 17.5px); line-height: 1.7;
+    max-width: 820px; font-size: clamp(15px, 1.7vw, 17.5px); line-height: 1.7;
     color: var(--text-dim); margin: 0 0 34px;
   }
   .home-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
@@ -459,7 +481,7 @@ const STYLES = `
 
   .home-stats {
     display: grid; grid-template-columns: repeat(4, 1fr);
-    width: 100%; max-width: 640px; margin-top: 44px;
+    width: 100%; max-width: 980px; margin-top: 44px;
     border-top: 1px solid var(--border);
   }
   @media (max-width: 620px) { .home-stats { grid-template-columns: repeat(2, 1fr); } }
@@ -626,7 +648,7 @@ const STYLES = `
     .screen-actions { flex-direction: column; gap: 10px; }
     .screen-actions > button { width: 100%; }
   }
-  .content-area .screen-narrow { max-width: 660px; margin: 0 auto; }
+  .content-area .screen-narrow { max-width: none; width: 100%; margin: 0; }
 
   /* ---------- DASHBOARD ---------- */
   .dash-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -688,7 +710,7 @@ const STYLES = `
   /* ---------- SINCE YOUR LAST VISIT ---------- */
   .visit-compare {
     background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px;
-    padding: 16px 18px; margin: 0 auto 18px; max-width: 460px; text-align: left;
+    padding: 16px 18px; margin: 0 auto 18px; max-width: 780px; text-align: left;
   }
   .visit-compare-head {
     display: flex; align-items: center; gap: 7px; font-family: 'Geist Mono', ui-monospace, monospace;
@@ -733,7 +755,7 @@ const STYLES = `
 
   .next-checkup {
     background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px;
-    padding: 16px 18px; margin: 0 auto 18px; max-width: 460px; text-align: left;
+    padding: 16px 18px; margin: 0 auto 18px; max-width: 780px; text-align: left;
   }
   .next-checkup-head {
     display: flex; align-items: center; gap: 6px;
@@ -755,7 +777,7 @@ const STYLES = `
 
   .mpns-card {
     background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px;
-    padding: 16px 18px; margin: 0 auto 18px; max-width: 460px; text-align: left;
+    padding: 16px 18px; margin: 0 auto 18px; max-width: 780px; text-align: left;
   }
   .mpns-label {
     font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9.5px;
@@ -794,14 +816,14 @@ const STYLES = `
     display: flex; gap: 9px; align-items: flex-start; text-align: left; font-size: 11.5px;
     line-height: 1.55; color: var(--text-dim); background: var(--surface-2);
     border: 1px dashed var(--border); border-radius: 10px; padding: 11px 14px;
-    margin: 0 auto 14px; max-width: 460px;
+    margin: 0 auto 14px; max-width: 780px;
   }
   .stage-held-note b { color: var(--text); }
   .stage-held-note svg { flex-shrink: 0; margin-top: 1px; color: var(--amber); }
 
   .severity-banner {
     border: 1.5px solid; border-radius: 14px; padding: 15px 18px; margin: 4px auto 18px;
-    max-width: 460px; text-align: left;
+    max-width: 780px; text-align: left;
   }
   .severity-label {
     display: flex; align-items: center; gap: 8px;
@@ -820,7 +842,7 @@ const STYLES = `
     font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; text-transform: uppercase;
     letter-spacing: 0.09em; color: var(--text-dim); margin-bottom: 2px;
   }
-  .terminal-block { margin: 4px auto 6px; max-width: 460px; }
+  .terminal-block { margin: 4px auto 6px; max-width: 780px; }
   .terminal-note {
     font-size: 12px; color: var(--text-dim); line-height: 1.6; text-align: left;
     background: var(--surface-2); border: 1px dashed var(--border); border-radius: 8px; padding: 13px 15px;
@@ -980,7 +1002,7 @@ const STYLES = `
   }
 
   .hero-grid {
-    position: relative; z-index: 2; max-width: 1120px; margin: 0 auto;
+    position: relative; z-index: 2; max-width: none; width: 100%; margin: 0;
     display: grid; grid-template-columns: 1.08fr 0.92fr; gap: 48px; align-items: center;
   }
   @media (max-width: 900px) {
@@ -1082,7 +1104,7 @@ const STYLES = `
 
   .hero-stats {
     position: relative; z-index: 2;
-    max-width: 1120px; margin: 62px auto 0;
+    max-width: none; width: 100%; margin: 62px 0 0;
     display: grid; grid-template-columns: repeat(3, 1fr);
     border-top: 1px solid rgba(255,255,255,0.12);
   }
@@ -1118,7 +1140,7 @@ const STYLES = `
   /* ============ PROGRESSION (the one hero motion moment) ============ */
   .prog { background: var(--surface); border-bottom: 1px solid var(--border); }
   .prog-inner {
-    max-width: 1120px; margin: 0 auto; padding: 0 40px;
+    max-width: none; width: 100%; margin: 0; padding: 0 40px;
     display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: start;
   }
   @media (max-width: 900px) {
@@ -1197,8 +1219,8 @@ const STYLES = `
   .section-cta { margin-top: 26px; }
   .section-cta .primary-btn { display: inline-flex; align-items: center; gap: 7px; }
 
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; max-width: 760px; margin: 0 auto 34px; }
-  .two-col-wide { max-width: 900px; margin-bottom: 0; text-align: left; align-items: start; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; max-width: 1250px; margin: 0 auto 34px; }
+  .two-col-wide { max-width: 1500px; margin-bottom: 0; text-align: left; align-items: start; }
   @media (max-width: 760px) { .two-col { grid-template-columns: 1fr; gap: 24px; } }
   .fact-head { font-family: 'Geist', system-ui, sans-serif; font-size: 22px; font-weight: 700; color: var(--primary-dark); margin-bottom: 10px; }
   .fact-accent { color: var(--primary); }
@@ -1212,7 +1234,7 @@ const STYLES = `
   /* ---------- INTERACTIVE STAGE EXPLORER ---------- */
   .explorer {
     display: grid; grid-template-columns: 1.05fr 1fr; gap: 28px; align-items: center;
-    max-width: 860px; margin: 0 auto; text-align: left;
+    max-width: 1400px; margin: 0 auto; text-align: left;
   }
   @media (max-width: 820px) { .explorer { grid-template-columns: 1fr; gap: 18px; } }
   .explorer-svg { width: 100%; height: auto; max-height: 330px; display: block; margin: 0 auto; }
@@ -1270,7 +1292,7 @@ const STYLES = `
   /* ---------- MODE CHOOSER ---------- */
   .mode-grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
-    max-width: 780px; margin: 0 auto;
+    max-width: 1250px; margin: 0 auto;
   }
   @media (max-width: 780px) { .mode-grid { grid-template-columns: 1fr; } }
   .mode-card {
@@ -1307,13 +1329,13 @@ const STYLES = `
   .mode-badge-unset { background: rgba(245,201,62,0.12); border-color: rgba(245,201,62,0.32); color: #F5C93E; }
   .mode-swap { opacity: 0.65; text-decoration: underline; margin-left: 2px; }
 
-  .causes-intro { max-width: 620px; margin: 0 auto 22px; }
+  .causes-intro { max-width: 900px; margin: 0 auto 22px; }
   .demo-center { display: flex; justify-content: center; }
-  .causes-flow { width: 100%; max-width: 680px; height: auto; display: block; margin: 0 auto 26px; }
+  .causes-flow { width: 100%; max-width: 980px; height: auto; display: block; margin: 0 auto 26px; }
 
   .cause-cards {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 14px; max-width: 820px; margin: 0 auto;
+    gap: 14px; max-width: 1400px; margin: 0 auto;
   }
   .cause-card {
     display: flex; flex-direction: column; align-items: flex-start; gap: 7px;
@@ -1338,7 +1360,7 @@ const STYLES = `
   .cause-tag-on { background: rgba(61,139,255,0.14); color: var(--primary-dark); border: 1px solid rgba(61,139,255,0.32); }
   .cause-tag-off { background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border); }
 
-  .howto-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; max-width: 900px; margin: 0 auto; }
+  .howto-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; max-width: none; margin: 0; }
   .howto-card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
     padding: 20px 18px; text-align: left;
@@ -1350,7 +1372,7 @@ const STYLES = `
     padding: 30px 32px 38px;
   }
   .home-disclaimer {
-    display: flex; gap: 13px; align-items: center; max-width: 780px;
+    display: flex; gap: 13px; align-items: center; max-width: 1100px;
     margin: 0 auto; font-size: 11.5px; line-height: 1.6; color: var(--text-dim);
   }
   .home-disclaimer b { color: var(--text); }
@@ -1438,7 +1460,7 @@ const STYLES = `
   }
 
   /* ---------- SHELL / NAV ---------- */
-  .screen-shell { max-width: 1180px; margin: 0 auto; padding: 22px 20px 48px; }
+  .screen-shell { max-width: none; width: 100%; margin: 0; padding: 22px 34px 48px; }
   .top-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 22px; }
   .back-btn {
     font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: var(--text-dim);
@@ -1458,7 +1480,7 @@ const STYLES = `
 
   /* ---------- SCREEN GENERIC ---------- */
   .screen-head { margin-bottom: 20px; }
-  .screen-narrow { max-width: 620px; margin: 0 auto; }
+  .screen-narrow { max-width: none; width: 100%; margin: 0; }
   .screen-title {
     font-family: 'Geist', system-ui, sans-serif; font-weight: 600; font-size: 27px; margin: 0 0 6px;
     color: var(--primary-dark); position: relative; display: inline-block;
@@ -1481,7 +1503,20 @@ const STYLES = `
   .ghost-btn:hover { color: var(--primary); border-color: var(--primary); }
 
   /* ---------- PANELS / INPUTS ---------- */
-  .input-grid { display: grid; grid-template-columns: 1fr; gap: 18px; max-width: 620px; margin: 0 auto; }
+  .input-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+    align-items: stretch; max-width: none; width: 100%; margin: 0;
+  }
+  .input-grid > .panel-span { grid-column: 1 / -1; }
+  /* Both side-by-side input panels render as identical boxes: height:100% makes
+     each fill its grid row, so the two borders match exactly regardless of how
+     many fields each contains. Fields keep their natural height (stretching them
+     would distort the sliders); the shorter panel simply carries even padding
+     at the bottom. */
+  .input-grid > .panel { height: 100%; }
+  @media (max-width: 860px) {
+    .input-grid { grid-template-columns: 1fr; }
+  }
   .panel {
     position: relative; overflow: hidden;
     background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
@@ -1535,7 +1570,7 @@ const STYLES = `
   .tick { font-size: 10px; color: var(--text-dim); cursor: pointer; font-family: 'Geist Mono', ui-monospace, monospace; }
   .tick.active { color: var(--primary); font-weight: 700; }
 
-  .compute-bar { max-width: 620px; margin: 26px auto 0; }
+  .compute-bar { max-width: 720px; margin: 26px auto 0; }
   .compute-btn {
     width: 100%; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 14px; font-weight: 700;
     background: var(--primary); color: #FFFFFF; border: none; border-radius: 8px; padding: 15px; cursor: pointer;
@@ -1587,7 +1622,7 @@ const STYLES = `
   }
   .result-stage-name { font-family: 'Geist', system-ui, sans-serif; font-size: 21px; font-weight: 600; }
   .result-stage-detail { font-size: 12.5px; color: var(--text-dim); margin-bottom: 8px; }
-  .result-sentence { font-size: 14.5px; line-height: 1.6; max-width: 420px; margin: 6px auto 16px; }
+  .result-sentence { font-size: 14.5px; line-height: 1.6; max-width: 640px; margin: 6px auto 16px; }
   .result-factors { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
   .factor-chip {
     font-size: 11.5px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
@@ -1816,7 +1851,7 @@ const STYLES = `
   }
   .row-btn:hover { border-color: var(--primary); color: var(--primary); }
 
-  .footnote { max-width: 1180px; margin: 28px auto 0; font-size: 11px; color: var(--text-dim); line-height: 1.6; border-top: 1px solid var(--border); padding-top: 12px; }
+  .footnote { max-width: none; margin: 28px 0 0; font-size: 11px; color: var(--text-dim); line-height: 1.6; border-top: 1px solid var(--border); padding-top: 12px; }
 
   /* ---------- APP VERIFICATION ---------- */
   .verify-summary {
@@ -4654,7 +4689,7 @@ export default function NephroPath() {
                   onChange={(v) => setDraft({ ...draft, bmi: v })} accent="#3D8BFF" sub={(draft.bmi === "" ? "Not entered" : bmiCategory(num(draft.bmi, 0))) + " · used for guidance only"} />
               </div>
 
-              <div className="panel">
+              <div className="panel panel-span">
                 <div className="panel-title"><TrendingUp size={14} className="ptitle-icon" /> Projection window</div>
                 <NumericSlider label="Look ahead" unit="6-mo cycles" value={draft.steps} min={1} max={10} step={1}
                   onChange={(v) => setDraft({ ...draft, steps: v })} accent="#3E6FD0"
