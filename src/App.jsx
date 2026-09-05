@@ -631,18 +631,16 @@ const STYLES = `
   .topbar-patient-id { font-size: 10px; color: var(--text-dim); }
 
   .content-area {
-    flex: 1; padding: 28px 32px 44px; overflow-x: hidden;
+    flex: 1; padding: clamp(16px, 3vw, 28px) clamp(12px, 3.2vw, 32px) 44px; overflow-x: hidden;
     background:
       radial-gradient(80% 55% at 100% 0%, rgba(61,139,255,0.10) 0%, transparent 58%),
       radial-gradient(70% 50% at 0% 100%, rgba(61,139,255,0.05) 0%, transparent 60%),
       var(--bg);
   }
-  @media (max-width: 900px) { .content-area { padding: 20px 16px 32px; } }
   /* On real phones the 18px side padding leaves cards feeling cramped edge-to-edge;
      trim the horizontal padding slightly and open up vertical rhythm instead, so
      content breathes rather than compressing. Desktop and tablet are unaffected. */
   @media (max-width: 560px) {
-    .content-area { padding: 16px 12px 28px; }
     /* Safety net: nothing inside the content column may exceed its width on a
        phone. Fixed-size figures, wide tables and long unbroken strings were what
        pushed the layout sideways and left buttons half off-screen. */
@@ -687,7 +685,7 @@ const STYLES = `
 
   /* ---------- ANIMATED KIDNEY ---------- */
   .kidney-status { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 6px; }
-  .kidney-svg { overflow: visible; max-width: 100%; height: auto; }
+  .kidney-svg { overflow: visible; width: min(100%, calc(100vw - 96px)); height: auto; }
   .kidney-body {
     transform-origin: 110px 110px;
     animation-name: kidneyPulse; animation-iteration-count: infinite; animation-timing-function: ease-in-out;
@@ -710,7 +708,7 @@ const STYLES = `
   .kidney-caption-stage { font-family: 'Geist', system-ui, sans-serif; font-size: 22px; font-weight: 700; }
   .kidney-caption-text { font-size: 12px; color: var(--text-dim); }
 
-  .risk-gauge { overflow: visible; max-width: 100%; height: auto; }
+  .risk-gauge { overflow: visible; width: min(100%, calc(100vw - 96px)); height: auto; }
   .gauge-arc { animation-name: gaugeSweep; animation-timing-function: var(--ease); animation-fill-mode: forwards; }
   @keyframes gaugeSweep { to { stroke-dashoffset: 0; } }
   /* ---------- SINCE YOUR LAST VISIT ---------- */
@@ -862,13 +860,12 @@ const STYLES = `
 
   /* ---------- INFO HOME PAGE ---------- */
   .info-home {
-    margin: -28px -32px -44px;
+    margin: calc(-1 * clamp(16px, 3vw, 28px)) calc(-1 * clamp(12px, 3.2vw, 32px)) -44px;
     min-height: calc(100% + 72px);
     display: flex; flex-direction: column;
     background: var(--bg);
   }
   .info-home > .home-footer-band { margin-top: auto; }
-  @media (max-width: 900px) { .info-home { margin: -20px -18px -32px; } }
 
   /* ============ LIGHT THEME ============
      Same token contract, inverted ground. Only the neutrals move; the KDIGO
@@ -1217,7 +1214,7 @@ const STYLES = `
     text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px;
   }
   .section-title {
-    font-family: 'Geist', system-ui, sans-serif; font-size: 31px; font-weight: 700; letter-spacing: 0.01em;
+    font-family: 'Geist', system-ui, sans-serif; font-size: clamp(21px, 5.6vw, 31px); font-weight: 700; letter-spacing: 0.01em;
     color: var(--primary-dark); margin: 0 0 26px;
   }
   .section-title-coral { color: var(--primary); }
@@ -1488,14 +1485,14 @@ const STYLES = `
   .screen-head { margin-bottom: 20px; }
   .screen-narrow { max-width: none; width: 100%; margin: 0; }
   .screen-title {
-    font-family: 'Geist', system-ui, sans-serif; font-weight: 600; font-size: 27px; margin: 0 0 6px;
+    font-family: 'Geist', system-ui, sans-serif; font-weight: 600; font-size: clamp(20px, 5.2vw, 27px); margin: 0 0 6px;
     color: var(--primary-dark); position: relative; display: inline-block;
   }
   .screen-title::after {
     content: ''; display: block; width: 46px; height: 3px; border-radius: 3px; margin-top: 6px;
     background: linear-gradient(90deg, var(--primary), var(--primary-dark));
   }
-  .screen-sub { color: var(--text-dim); font-size: 13.5px; }
+  .screen-sub { color: var(--text-dim); font-size: clamp(12px, 3.4vw, 13.5px); }
   .screen-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
   .primary-btn {
     font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12.5px; font-weight: 600;
