@@ -364,6 +364,41 @@ const STYLES = `
   body > * { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
   body > * > * { flex: 1 1 auto; min-height: 0; }
 
+  /* ---------- WELCOME INTRO ---------- */
+  .intro-veil {
+    position: fixed; inset: 0; z-index: 9999;
+    background: #080D16;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 1; transition: opacity 560ms var(--ease, ease);
+  }
+  .intro-veil-out { opacity: 0; pointer-events: none; }
+  .intro-inner { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+  .intro-logo {
+    width: min(64vw, 300px); height: auto; display: block;
+    animation: introRise 760ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .intro-bar {
+    width: min(46vw, 190px); height: 3px; border-radius: 999px;
+    background: rgba(143,180,245,0.18); overflow: hidden;
+  }
+  .intro-bar > span {
+    display: block; height: 100%; width: 40%; border-radius: 999px;
+    background: linear-gradient(90deg, #3D8BFF, #6BA6FF);
+    animation: introSweep 1150ms ease-in-out infinite;
+  }
+  @keyframes introRise {
+    from { opacity: 0; transform: translateY(10px) scale(0.985); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes introSweep {
+    0%   { transform: translateX(-110%); }
+    100% { transform: translateX(360%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .intro-logo { animation: none; }
+    .intro-bar > span { animation: none; width: 100%; }
+  }
+
   .np-root {
     /* Dark clinical: the register of a radiology workstation, not a marketing page.
        One neutral family (deep slate-navy), one accent (clinical blue).
@@ -1625,15 +1660,15 @@ const STYLES = `
       radial-gradient(circle at 50% -10%, rgba(61,139,255,0.14) 0%, transparent 60%),
       var(--surface);
     border: 1px solid var(--border); border-radius: 14px;
-    padding: 34px 28px; text-align: center; box-shadow: 0 8px 28px rgba(23,32,46,0.09);
+    padding: clamp(16px, 2.4vw, 22px) clamp(14px, 2.2vw, 24px); text-align: center; box-shadow: 0 8px 28px rgba(23,32,46,0.09);
   }
   .stage-badge-lg {
-    width: 74px; height: 74px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-family: 'Geist', system-ui, sans-serif; font-weight: 700; font-size: 24px; margin: 0 auto 10px;
+    width: 58px; height: 58px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-family: 'Geist', system-ui, sans-serif; font-weight: 700; font-size: 19px; margin: 0 auto 8px;
   }
-  .result-stage-name { font-family: 'Geist', system-ui, sans-serif; font-size: 21px; font-weight: 600; }
+  .result-stage-name { font-family: 'Geist', system-ui, sans-serif; font-size: clamp(16px, 3.4vw, 19px); font-weight: 600; }
   .result-stage-detail { font-size: 12.5px; color: var(--text-dim); margin-bottom: 8px; }
-  .result-sentence { font-size: 14.5px; line-height: 1.6; max-width: 640px; margin: 6px auto 16px; }
+  .result-sentence { font-size: clamp(12.5px, 3vw, 13.5px); line-height: 1.55; max-width: 640px; margin: 5px auto 12px; }
   .result-factors { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
   .factor-chip {
     font-size: 11.5px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
@@ -1675,6 +1710,11 @@ const STYLES = `
   table.tmatrix td.rowhead { color: var(--text-dim); text-align: left; white-space: nowrap; }
   td.zerocell { color: #5C6A7D; }
   td.backcell { color: #F5C93E; }
+  /* Light theme: the amber used for backward-transition cells has very poor
+     contrast on white, and the muted grey of zero cells is borderline. Both get
+     darker equivalents so every number in the matrix stays legible. */
+  .np-light td.backcell { color: #9A6B00; font-weight: 600; }
+  .np-light td.zerocell { color: #55657A; }
 
   .cpt-note { font-size: 11.5px; color: var(--text-dim); margin-bottom: 12px; line-height: 1.55; }
   .cpt-note b { color: var(--text); font-weight: 600; }
@@ -2178,99 +2218,10 @@ function NumericSlider({ label, unit, value, min, max, step, onChange, accent, s
   );
 }
 
-function StepSlider({ label, options, labels, value, onChange, accent }) {
-  const idx = options.indexOf(value);
-  const pct = options.length > 1 ? (idx / (options.length - 1)) * 100 : 0;
-  return (
-    <div className="slider-row">
-      <div className="slider-top">
-        <span className="slider-label">{label}</span>
-        <span className="slider-value" style={{ color: accent }}>{labels ? labels[value] : value}</span>
-      </div>
-      <input
-        type="range" min={0} max={options.length - 1} step={1} value={idx}
-        onChange={(e) => onChange(options[parseInt(e.target.value, 10)])}
-        className="slider-input"
-        aria-label={label}
-        style={{ background: "linear-gradient(90deg, " + accent + " " + pct + "%, var(--border) " + pct + "%)" }}
-      />
-      <div className="step-ticks">
-        {options.map((o) => (
-          <span key={o} className={o === value ? "tick active" : "tick"} onClick={() => onChange(o)}>{o}</span>
-        ))}
-      </div>
-    </div>
-  );
-}
 
-function KidneyIcon({ size, color, opacity }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" style={{ opacity: opacity == null ? 1 : opacity }}>
-      <path
-        d="M52 8 C30 8 16 26 16 48 C16 66 24 82 38 92 C42 86 40 76 34 70 C26 62 24 50 30 40 C36 30 48 28 56 34 C66 41 78 38 84 28 C90 18 78 8 52 8 Z"
-        fill={color} stroke="none"
-      />
-    </svg>
-  );
-}
 
 /* Anatomical kidney with renal artery, vein, ureter and nephron tubules —
    used as the home-screen backdrop illustration. */
-function KidneyAnatomy({ size, opacity }) {
-  return (
-    <svg width={size} height={size * 0.92} viewBox="0 0 300 276" style={{ opacity: opacity == null ? 1 : opacity }}>
-      <defs>
-        <linearGradient id="npKidneyBody" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#5B87DC" />
-          <stop offset="55%" stopColor="#3E6FD0" />
-          <stop offset="100%" stopColor="#3D8BFF" />
-        </linearGradient>
-        <linearGradient id="npCortex" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#33507E" />
-          <stop offset="100%" stopColor="#8FAEE8" />
-        </linearGradient>
-      </defs>
-
-      {/* renal vein + artery */}
-      <path d="M112 138 C82 132 58 120 34 112" stroke="#5B87DC" strokeWidth="13" fill="none" strokeLinecap="round" />
-      <path d="M114 152 C86 152 60 160 38 170" stroke="#C4577B" strokeWidth="10" fill="none" strokeLinecap="round" />
-      {/* ureter */}
-      <path d="M120 168 C104 196 96 224 92 258" stroke="#A8BEE4" strokeWidth="9" fill="none" strokeLinecap="round" />
-
-      {/* kidney body */}
-      <path
-        d="M186 22 C132 22 108 66 108 108 C108 150 108 186 140 226 C168 260 226 262 254 226 C280 192 282 140 262 104 C244 72 240 48 214 32 C206 26 196 22 186 22 Z"
-        fill="url(#npKidneyBody)"
-      />
-      {/* cortex inner band */}
-      <path
-        d="M186 44 C146 44 130 78 130 110 C130 146 132 178 156 210 C178 238 220 240 240 212 C258 186 260 144 246 114 C232 88 226 68 208 54 C201 48 194 44 186 44 Z"
-        fill="url(#npCortex)" opacity="0.55"
-      />
-      {/* renal pelvis / calyces */}
-      <path d="M150 130 C168 128 180 138 186 152 C192 166 190 182 180 194"
-        stroke="#16202E" strokeWidth="7" fill="none" strokeLinecap="round" opacity="0.85" />
-      <path d="M186 152 C202 144 218 146 230 156" stroke="#16202E" strokeWidth="5" fill="none" strokeLinecap="round" opacity="0.7" />
-      <path d="M186 152 C200 166 214 172 230 172" stroke="#16202E" strokeWidth="5" fill="none" strokeLinecap="round" opacity="0.7" />
-      <path d="M180 194 C194 196 208 202 216 212" stroke="#16202E" strokeWidth="5" fill="none" strokeLinecap="round" opacity="0.6" />
-
-      {/* nephron tubules (filtration detail) */}
-      <g stroke="#1B2942" strokeWidth="2.6" fill="none" opacity="0.5" strokeLinecap="round">
-        <path d="M164 78 C176 70 188 74 192 86 C196 98 186 106 178 100" />
-        <path d="M214 92 C226 86 236 92 238 104 C240 116 230 122 222 117" />
-        <path d="M150 178 C160 188 158 200 148 204" />
-        <path d="M232 190 C242 196 244 208 236 214" />
-      </g>
-      {/* glomeruli */}
-      <g fill="#FFFFFF" opacity="0.55">
-        <circle cx="163" cy="76" r="5" />
-        <circle cx="213" cy="90" r="4.5" />
-        <circle cx="149" cy="176" r="4" />
-        <circle cx="231" cy="188" r="4" />
-      </g>
-    </svg>
-  );
-}
 
 /* Horizontal ribbon showing the six CKD stages, with the active one highlighted. */
 function StageRibbon({ activeIdx }) {
@@ -2298,27 +2249,8 @@ function StageRibbon({ activeIdx }) {
   );
 }
 
-function DropletIcon({ size, color }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24">
-      <path d="M12 2 C12 2 5 11 5 16 A7 7 0 0 0 19 16 C19 11 12 2 12 2 Z" fill={color} />
-    </svg>
-  );
-}
 
-function WaveDivider({ color }) {
-  return (
-    <svg viewBox="0 0 400 24" className="wave-divider" preserveAspectRatio="none">
-      <path d="M0 12 Q 25 2 50 12 T 100 12 T 150 12 T 200 12 T 250 12 T 300 12 T 350 12 T 400 12"
-        fill="none" stroke={color} strokeWidth="2" />
-    </svg>
-  );
-}
 
-function polarToCartesian(cx, cy, r, angleDeg) {
-  const rad = (angleDeg * Math.PI) / 180;
-  return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
-}
 
 /* Radial ring gauge. A full circle rather than a semicircle: nothing clips at the
    edges, the numeral sits at true centre, and the caption lives in HTML below the
@@ -3563,6 +3495,17 @@ export default function NephroPath() {
     document.title = "NEPHROPATH: A Bayesian Network\u2013Markov Chain Framework for Patient-Specific Stochastic Modeling of Chronic Kidney Disease Progression";
   }, []);
 
+  // Brief branded intro on first load. It covers the moment where fonts and the
+  // logo are still resolving, so the app doesn't flash half-styled content, then
+  // fades out. Session-scoped: navigating between screens never replays it.
+  const [intro, setIntro] = useState(true);
+  const [introFading, setIntroFading] = useState(false);
+  useEffect(() => {
+    const fade = setTimeout(() => setIntroFading(true), 1250);
+    const done = setTimeout(() => setIntro(false), 1850);
+    return () => { clearTimeout(fade); clearTimeout(done); };
+  }, []);
+
   const [view, setView] = useState("home");
   const [prevView, setPrevView] = useState("result");
 
@@ -4009,10 +3952,20 @@ export default function NephroPath() {
     setRailTip(null);
   };
 
+  const introOverlay = intro ? (
+    <div className={"intro-veil" + (introFading ? " intro-veil-out" : "")} aria-hidden="true">
+      <div className="intro-inner">
+        <img src={LOGO_UNIVERSAL} alt="" className="intro-logo" />
+        <div className="intro-bar"><span /></div>
+      </div>
+    </div>
+  ) : null;
+
   if (view === "home") {
     return (
       <div className={"np-root " + (isLight ? "np-light" : "np-dark")}>
         <style>{STYLES}</style>
+        {introOverlay}
         <HomePage onStart={() => setView("welcome")} isLight={isLight} onToggleTheme={() => setTheme(isLight ? "dark" : "light")} />
       </div>
     );
@@ -4087,6 +4040,7 @@ export default function NephroPath() {
   return (
     <div className={"np-root np-app " + (isLight ? "np-light" : "np-dark")}>
       <style>{STYLES}</style>
+      {introOverlay}
       <div className="app-layout">
         <aside className="sidebar">
           <div className="sidebar-brand">
@@ -4754,7 +4708,7 @@ export default function NephroPath() {
             </div>
 
             <div className="result-card">
-              <KidneyStatus stageIdx={stageIdx} size={190} />
+              <KidneyStatus stageIdx={stageIdx} size={148} />
               <div className="result-stage-name">{stage.name}</div>
               <div className="result-stage-detail">eGFR {applied.egfr} mL/min/1.73m² · {stage.range} range</div>
 
@@ -4982,7 +4936,7 @@ export default function NephroPath() {
                         <tr>
                           <td className="rowhead">Patient</td>
                           {currentFinalRow.map((v, j) => (
-                            <td key={j} style={{ background: STAGES[j].color + Math.round(v * 200).toString(16).padStart(2, "0"), color: v > 0.4 ? "#0B1220" : "#E7EEF8", fontWeight: v > 0.4 ? 700 : 400 }}>{(v * 100).toFixed(1)}</td>
+                            <td key={j} style={{ background: STAGES[j].color + Math.round(v * 200).toString(16).padStart(2, "0"), color: v > 0.4 ? "#0B1220" : "var(--text)", fontWeight: v > 0.4 ? 700 : 400 }}>{(v * 100).toFixed(1)}</td>
                           ))}
                         </tr>
                       </tbody>
@@ -5010,7 +4964,7 @@ export default function NephroPath() {
                           <tr key={i}>
                             <td className="rowhead">{STAGES[i].code}</td>
                             {row.map((p, j) => (
-                              <td key={j} className={p === 0 ? "zerocell" : j < i ? "backcell" : ""} style={p > 0 ? { background: STAGES[j].color + Math.round(p * 200).toString(16).padStart(2, "0"), color: p > 0.4 ? "#0B1220" : "#E7EEF8", fontWeight: p > 0.4 ? 700 : 400 } : {}}>{(p * 100).toFixed(1)}</td>
+                              <td key={j} className={p === 0 ? "zerocell" : j < i ? "backcell" : ""} style={p > 0 ? { background: STAGES[j].color + Math.round(p * 200).toString(16).padStart(2, "0"), color: p > 0.4 ? "#0B1220" : "var(--text)", fontWeight: p > 0.4 ? 700 : 400 } : {}}>{(p * 100).toFixed(1)}</td>
                             ))}
                           </tr>
                         ))}
